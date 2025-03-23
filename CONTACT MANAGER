@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class Contact implements Serializable {
+    private static final long serialVersionUID = 1L;
     String name, phone, email;
 
     public Contact(String name, String phone, String email) {
@@ -33,12 +34,16 @@ public class ContactManagementGUI {
     private static void createAndShowGUI() {
         JFrame frame = new JFrame("Contact Management System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
-        
-        JList<String> contactList = new JList<>(listModel);
-        JScrollPane scrollPane = new JScrollPane(contactList);
+        frame.setSize(600, 450);
 
+        JList<String> contactList = new JList<>(listModel);
+        contactList.setFont(new Font("Arial", Font.PLAIN, 16));
+        JScrollPane scrollPane = new JScrollPane(contactList);
         updateListModel();
+
+        JTextField searchField = new JTextField(20);
+        JButton searchButton = new JButton("Search");
+        searchButton.addActionListener(e -> searchContact(searchField.getText().trim(), contactList));
 
         JButton addButton = new JButton("Add Contact");
         JButton editButton = new JButton("Edit Contact");
@@ -53,12 +58,18 @@ public class ContactManagementGUI {
             System.exit(0);
         });
 
+        JPanel topPanel = new JPanel();
+        topPanel.add(new JLabel("Search:"));
+        topPanel.add(searchField);
+        topPanel.add(searchButton);
+
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
         buttonPanel.add(exitButton);
 
+        frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);
         frame.setVisible(true);
@@ -77,7 +88,11 @@ public class ContactManagementGUI {
 
         int option = JOptionPane.showConfirmDialog(null, message, "Add Contact", JOptionPane.OK_CANCEL_OPTION);
         if (option == JOptionPane.OK_OPTION) {
-            contacts.add(new Contact(nameField.getText(), phoneField.getText(), emailField.getText()));
+            if (nameField.getText().trim().isEmpty() || phoneField.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Name and Phone cannot be empty.");
+                return;
+            }
+            contacts.add(new Contact(nameField.getText().trim(), phoneField.getText().trim(), emailField.getText().trim()));
             updateListModel();
             saveContacts();
         }
@@ -102,9 +117,13 @@ public class ContactManagementGUI {
 
         int option = JOptionPane.showConfirmDialog(null, message, "Edit Contact", JOptionPane.OK_CANCEL_OPTION);
         if (option == JOptionPane.OK_OPTION) {
-            contact.name = nameField.getText();
-            contact.phone = phoneField.getText();
-            contact.email = emailField.getText();
+            if (nameField.getText().trim().isEmpty() || phoneField.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Name and Phone cannot be empty.");
+                return;
+            }
+            contact.name = nameField.getText().trim();
+            contact.phone = phoneField.getText().trim();
+            contact.email = emailField.getText().trim();
             updateListModel();
             saveContacts();
         }
@@ -124,6 +143,21 @@ public class ContactManagementGUI {
         }
     }
 
+    private static void searchContact(String query, JList<String> contactList) {
+        if (query.isEmpty()) {
+            contactList.setSelectedIndex(-1);
+            return;
+        }
+        for (int i = 0; i < contacts.size(); i++) {
+            if (contacts.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
+                contactList.setSelectedIndex(i);
+                contactList.ensureIndexIsVisible(i);
+                return;
+            }
+        }
+        JOptionPane.showMessageDialog(null, "No matching contact found.");
+    }
+
     private static void updateListModel() {
         listModel.clear();
         for (Contact contact : contacts) {
@@ -135,15 +169,19 @@ public class ContactManagementGUI {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
             oos.writeObject(contacts);
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Error saving contacts: " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Error saving contacts.");
         }
     }
 
     private static void loadContacts() {
+        File file = new File(FILE_NAME);
+        if (!file.exists()) return;
+
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(FILE_NAME))) {
             contacts = (List<Contact>) ois.readObject();
+            updateListModel();
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("No previous contacts found or failed to load.");
+            JOptionPane.showMessageDialog(null, "Failed to load contacts.");
         }
     }
 }
